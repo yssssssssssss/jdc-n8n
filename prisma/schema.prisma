@@ -1,0 +1,100 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  workflows   Workflow[]
+  credentials Credential[]
+  executions  Execution[]
+
+  @@index([email])
+  @@index([createdAt(sort: Desc)])
+  @@map("users")
+}
+
+model Workflow {
+  id         String   @id @default(cuid())
+  name       String
+  definition Json
+  isActive   Boolean  @default(true) @map("is_active")
+  userId     String   @map("user_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  executions Execution[]
+
+  @@index([userId])
+  @@index([isActive])
+  @@index([createdAt(sort: Desc)])
+  @@map("workflows")
+}
+
+model Credential {
+  id        String   @id @default(cuid())
+  name      String
+  type      String
+  data      String // 存储加密后的凭证数据
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@map("credentials")
+}
+
+model Execution {
+  id         String    @id @default(cuid())
+  status     String
+  startedAt  DateTime  @default(now()) @map("started_at")
+  finishedAt DateTime? @map("finished_at")
+  inputData  Json?     @map("input_data")
+  outputData Json?     @map("output_data")
+  logs       Json      @default("[]")
+  workflowId String    @map("workflow_id")
+  userId     String    @map("user_id")
+
+  // Relations
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([userId])
+  @@index([status])
+  @@index([startedAt(sort: Desc)])
+  @@map("executions")
+}
+
+enum CredentialType {
+  API_KEY    @map("api_key")
+  OAUTH2     @map("oauth2")
+  BASIC_AUTH @map("basic_auth")
+}
+
+enum ExecutionStatus {
+  RUNNING   @map("running")
+  SUCCEEDED @map("succeeded")
+  FAILED    @map("failed")
+  CANCELLED @map("cancelled")
+}
