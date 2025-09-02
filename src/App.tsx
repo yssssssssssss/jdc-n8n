@@ -76,7 +76,7 @@ const App: React.FC = () => {
               path="/workflows/new" 
               element={
                 <ProtectedRoute>
-                  <Layout>
+                  <Layout maxWidth={false}>
                     <WorkflowEditor />
                   </Layout>
                 </ProtectedRoute>
@@ -86,7 +86,7 @@ const App: React.FC = () => {
               path="/workflows/:id/edit" 
               element={
                 <ProtectedRoute>
-                  <Layout>
+                  <Layout maxWidth={false}>
                     <WorkflowEditor />
                   </Layout>
                 </ProtectedRoute>

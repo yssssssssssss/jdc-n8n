@@ -39,6 +39,8 @@ import { nodeTypes } from '../components/nodes';
 import NodePanel from '../components/NodePanel';
 import NodeProperties from '../components/NodeProperties';
 import { toast } from 'sonner';
+import { aiModelNodeData } from '../components/nodes/AIModelNode';
+import { AdvancedNodeData } from '../components/nodes/AdvancedNode';
 
 interface WorkflowDefinition {
   nodes: Array<{
@@ -197,7 +199,7 @@ const WorkflowEditor: React.FC = () => {
     if (width < 640) return '100vw'; // 小屏幕全宽
     if (width < 768) return '288px'; // md
     if (width < 1024) return '288px'; // lg
-    if (width < 1280) return '320px'; // xl
+    if (width < 1280) return '250px'; // xl
     return '384px'; // 2xl+
   };
 
@@ -215,28 +217,172 @@ const WorkflowEditor: React.FC = () => {
     setSelectedNode(null);
   }, []);
 
-  const addNode = useCallback((type: string) => {
+  const addNode = useCallback((type: string, position?: { x: number; y: number }) => {
     const nodeLabels = {
       start: '开始',
       action: '动作',
+      httpRequest: 'HTTP请求',
       condition: '条件',
-      end: '结束'
+      end: '结束',
+      aiModel: 'AI模型',
+      subworkflow: '子流程',
+      advanced: '高级节点',
+      custom: '自定义'
+    };
+    
+    // 为高级节点类型设置正确的默认数据结构
+    const getDefaultNodeData = (nodeType: string) => {
+      const baseData = {
+        label: `${nodeLabels[nodeType as keyof typeof nodeLabels] || nodeType} 节点`,
+        name: `${nodeLabels[nodeType as keyof typeof nodeLabels] || nodeType} 节点`,
+        description: `${nodeLabels[nodeType as keyof typeof nodeLabels] || nodeType}节点`
+      };
+      
+      // 子流程节点需要特殊的数据结构
+      if (nodeType === 'subworkflow') {
+        return {
+          ...baseData,
+          parameters: [], // 高级节点需要数组类型的参数
+          parameterValues: {},
+          inputs: [],
+          outputs: [],
+          executionConfig: {
+            timeout: 30000,
+            retryCount: 0,
+            cacheEnabled: false,
+            parallelExecution: false
+          },
+          // 子流程特有字段
+          subworkflowId: '',
+          subworkflowDefinition: {
+            id: '',
+            name: '新建子流程',
+            description: '子流程描述',
+            version: '1.0.0',
+            category: 'Custom',
+            nodes: [],
+            edges: [],
+            inputPorts: [],
+            outputPorts: [],
+            inputMapping: {},
+            outputMapping: {},
+            parameters: {},
+            metadata: {
+              author: 'User',
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              tags: [],
+              color: '#2196f3'
+            }
+          },
+          executionMode: 'sync',
+          debugMode: false,
+          isolationLevel: 'none',
+          errorHandling: {
+            onError: 'stop',
+            maxRetries: 0,
+            retryDelay: 1000
+          }
+        };
+      }
+      
+      // AI模型节点的默认数据结构
+      if (nodeType === 'aiModel') {
+        return {
+          ...baseData,
+          parameters: aiModelNodeData.parameters || [],
+          parameterValues: {},
+          inputs: aiModelNodeData.inputs || [],
+          outputs: aiModelNodeData.outputs || [],
+          executionConfig: {
+            timeout: 30000,
+            retryCount: 0,
+            cacheEnabled: false,
+            parallelExecution: false
+          }
+        };
+      }
+      
+      // 高级节点的默认数据结构
+       if (nodeType === 'advanced') {
+         return {
+           ...baseData,
+           parameters: [
+             {
+               name: 'example_param',
+               type: 'text',
+               label: '示例参数',
+               description: '这是一个示例参数，您可以根据需要修改',
+               required: false,
+               defaultValue: ''
+             }
+           ],
+           parameterValues: {},
+           inputs: [
+             {
+               id: 'input',
+               label: '输入',
+               type: 'data',
+               required: true
+             }
+           ],
+           outputs: [
+             {
+               id: 'output',
+               label: '输出',
+               type: 'data',
+               required: true
+             }
+           ],
+           executionConfig: {
+             timeout: 30000,
+             retryCount: 0,
+             cacheEnabled: false,
+             parallelExecution: false
+           }
+         };
+       }
+      
+      // 普通节点使用对象类型的参数
+      return {
+        ...baseData,
+        parameters: {}
+      };
     };
     
     const newNode: Node = {
       id: `node_${nodeIdCounter}`,
       type,
-      position: { x: Math.random() * 400 + 100, y: Math.random() * 400 + 100 },
-      data: {
-        label: `${nodeLabels[type as keyof typeof nodeLabels] || type} 节点`,
-        name: `${nodeLabels[type as keyof typeof nodeLabels] || type} 节点`,
-        description: `${nodeLabels[type as keyof typeof nodeLabels] || type}节点`,
-        parameters: {}
-      }
+      position: position || { x: Math.random() * 400 + 100, y: Math.random() * 400 + 100 },
+      data: getDefaultNodeData(type)
     };
     setNodes((nds) => [...nds, newNode]);
     setNodeIdCounter(prev => prev + 1);
   }, [nodeIdCounter, setNodes]);
+
+  // 拖拽处理函数
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const onDrop = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+
+    const reactFlowBounds = event.currentTarget.getBoundingClientRect();
+    const type = event.dataTransfer.getData('application/reactflow');
+
+    if (typeof type === 'undefined' || !type) {
+      return;
+    }
+
+    const position = {
+      x: event.clientX - reactFlowBounds.left,
+      y: event.clientY - reactFlowBounds.top,
+    };
+
+    addNode(type, position);
+  }, [addNode]);
 
   const deleteNode = useCallback((nodeId: string) => {
     setNodes((nds) => nds.filter((node) => node.id !== nodeId));
@@ -475,7 +621,7 @@ const WorkflowEditor: React.FC = () => {
             leftPanelOpen 
               ? windowSize.width < 768 
                 ? 'fixed inset-y-0 left-0 w-80 z-30' 
-                : 'w-80 md:w-72 lg:w-80 xl:w-96 min-w-[280px] max-w-[400px]'
+                : 'w-80 md:w-72 lg:w-80 xl:w-96 min-w-[250px] max-w-[250px]'
               : 'w-0'
           } ${leftPanelOpen ? 'opacity-100' : 'opacity-0'} overflow-hidden bg-gray-50 border-r border-gray-200 flex-shrink-0 ${
             windowSize.width < 768 && leftPanelOpen ? 'shadow-lg' : ''
@@ -504,7 +650,7 @@ const WorkflowEditor: React.FC = () => {
           </button>
           
           {/* 中间画布区域 - 自适应剩余空间 */}
-          <div className="flex-1 min-w-0 relative">
+          <div className="flex-1 min-w-0 relative" style={{ minHeight: '1200px' }}>
             <ReactFlow
               nodes={nodes}
               edges={edges}
@@ -513,6 +659,8 @@ const WorkflowEditor: React.FC = () => {
               onConnect={onConnect}
               onNodeClick={onNodeClick}
               onPaneClick={onPaneClick}
+              onDrop={onDrop}
+              onDragOver={onDragOver}
               nodeTypes={nodeTypes}
               fitView
               attributionPosition="bottom-left"
@@ -714,9 +862,10 @@ const WorkflowEditor: React.FC = () => {
         </div>
       </div>
 
+
       {/* 主要内容区域 - 响应式布局 */}
-      <div className={`${isFullscreen ? 'hidden' : 'flex-1 flex flex-col min-h-0'}`}>
-        <div className="flex-1 flex flex-col p-4 sm:p-6 space-y-4 sm:space-y-6 min-h-0">
+      <div className={`${isFullscreen ? 'hidden' : 'flex-1 flex flex-col min-h-0'}`} style={{maxWidth: 'calc(100vw - 10px)', margin: '0 auto', width: '100%'}}>
+        <div className="flex-1 flex flex-col p-4 sm:p-6 space-y-4 sm:space-y-6 min-h-0" style={{margin: '0 auto', width: '100%'}}>
           {/* 基本信息 - 响应式网格 */}
           <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 flex-shrink-0">
             <h2 className="text-lg font-medium text-gray-900 mb-4">基本信息</h2>

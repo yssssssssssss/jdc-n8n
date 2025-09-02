@@ -11,7 +11,11 @@ import {
   PlayArrow,
   Stop,
   Build,
+  Help,
+  Api,
+  Psychology,
   AccountTree,
+  Category,
 } from '@mui/icons-material';
 
 interface NodePanelProps {
@@ -33,6 +37,34 @@ const NodePanel: React.FC<NodePanelProps> = ({ onAddNode }) => {
       icon: <Build />,
       color: '#2196f3',
       description: '执行具体操作',
+    },
+    {
+      type: 'httpRequest',
+      label: 'HTTP请求',
+      icon: <Api />,
+      color: '#673ab7',
+      description: '发送HTTP请求',
+    },
+    {
+      type: 'aiModel',
+      label: 'AI模型',
+      icon: <Psychology />,
+      color: '#e91e63',
+      description: '大语言模型节点',
+    },
+    {
+      type: 'subworkflow',
+      label: '子流程',
+      icon: <AccountTree />,
+      color: '#009688',
+      description: '封装的子流程',
+    },
+    {
+      type: 'advanced',
+      label: '高级节点',
+      icon: <Category />,
+      color: '#ff5722',
+      description: '支持复杂配置的高级节点',
     },
     {
       type: 'condition',

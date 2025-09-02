@@ -24,6 +24,8 @@ import {
 } from '@mui/icons-material';
 import { Node } from 'reactflow';
 import { CustomNodeData } from './nodes/CustomNode';
+import HttpRequestProperties from './HttpRequestProperties';
+import AdvancedNodeProperties from './AdvancedNodeProperties';
 
 interface NodePropertiesProps {
   selectedNode: Node | null;
@@ -274,10 +276,49 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({
               </Button>
             </Box>
           </AccordionDetails>
+      </Accordion>
+
+      {/* HTTP请求节点专门配置 */}
+      {selectedNode.type === 'httpRequest' && (
+        <Accordion defaultExpanded>
+          <AccordionSummary expandIcon={<ExpandMore />}>
+            <Typography variant="subtitle2">HTTP请求配置</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <HttpRequestProperties
+              nodeData={selectedNode.data}
+              onUpdateConfig={(config) => {
+                const updatedData = { ...selectedNode.data, config };
+                onUpdateNode(selectedNode.id, updatedData);
+              }}
+            />
+          </AccordionDetails>
         </Accordion>
-        
-        {/* 行为配置 */}
+      )}
+
+      {/* 高级节点的专门配置 */}
+      {(selectedNode.type === 'advanced' || selectedNode.type === 'aiModel' || selectedNode.type === 'subworkflow') && (
         <Accordion>
+          <AccordionSummary expandIcon={<ExpandMore />}>
+            <Typography variant="subtitle2">高级配置</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <AdvancedNodeProperties
+              nodeData={nodeData}
+              onUpdateConfig={(config) => {
+                const updatedData = { ...nodeData, config };
+                if (selectedNode) {
+                  setNodeData(updatedData);
+                  onUpdateNode(selectedNode.id, updatedData);
+                }
+              }}
+            />
+          </AccordionDetails>
+        </Accordion>
+      )}
+
+      {/* 行为配置 */}
+      <Accordion>
           <AccordionSummary expandIcon={<ExpandMore />}>
             <Typography variant="subtitle2">行为配置</Typography>
           </AccordionSummary>
